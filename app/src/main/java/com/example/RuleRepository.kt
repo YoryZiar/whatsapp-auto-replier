@@ -1,9 +1,15 @@
 package com.example
 
+import android.content.Context
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 enum class MatchType(val label: String) {
@@ -19,7 +25,9 @@ enum class RuleScope(val label: String) {
     Both("Private & Group")
 }
 
+@Entity(tableName = "rules")
 data class ReplyRule(
+    @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
     val incomingKeyword: String,
     val matchType: MatchType,
@@ -30,32 +38,56 @@ data class ReplyRule(
 )
 
 object RuleRepository {
-    private val _rules = MutableStateFlow<List<ReplyRule>>(listOf(
-        ReplyRule(
-            incomingKeyword = "hello",
-            matchType = MatchType.SimilarityMatch,
-            replyMessage = "Hello from AutoReply! How can I help you today?",
-            targetScope = RuleScope.Both
-        ),
-        ReplyRule(
-            incomingKeyword = "",
-            matchType = MatchType.WelcomeMessage,
-            replyMessage = "Welcome! This is an automated response.",
-            targetScope = RuleScope.Private
-        )
-    ))
+    private val _rules = MutableStateFlow<List<ReplyRule>>(emptyList())
     val rules: StateFlow<List<ReplyRule>> = _rules.asStateFlow()
 
+    private var ruleDao: RuleDao? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    fun init(context: Context) {
+        val db = AppDatabase.getDatabase(context)
+        ruleDao = db.ruleDao()
+        scope.launch {
+            ruleDao?.getAllRules()?.collect { loadedRules ->
+                if (loadedRules.isEmpty()) {
+                    // Populate default rules
+                    val defaultHelloWorld = ReplyRule(
+                        incomingKeyword = "hello",
+                        matchType = MatchType.SimilarityMatch,
+                        replyMessage = "Hello from AutoReply! How can I help you today?",
+                        targetScope = RuleScope.Both
+                    )
+                    val defaultWelcome = ReplyRule(
+                        incomingKeyword = "",
+                        matchType = MatchType.WelcomeMessage,
+                        replyMessage = "Welcome! This is an automated response.",
+                        targetScope = RuleScope.Private
+                    )
+                    ruleDao?.insertRule(defaultHelloWorld)
+                    ruleDao?.insertRule(defaultWelcome)
+                } else {
+                    _rules.value = loadedRules
+                }
+            }
+        }
+    }
+
     fun addRule(rule: ReplyRule) {
-        _rules.update { list -> list + rule }
+        scope.launch {
+            ruleDao?.insertRule(rule)
+        }
     }
 
     fun deleteRule(id: String) {
-        _rules.update { list -> list.filter { it.id != id } }
+        scope.launch {
+            ruleDao?.deleteRuleById(id)
+        }
     }
 
     fun updateRule(rule: ReplyRule) {
-        _rules.update { list -> list.map { if (it.id == rule.id) rule else it } }
+        scope.launch {
+            ruleDao?.updateRule(rule)
+        }
     }
 
     fun findReply(messageText: String, isGroup: Boolean, isMentioned: Boolean): String? {
