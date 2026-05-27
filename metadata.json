@@ -1,0 +1,6 @@
+{
+  "name": "WA Auto Replier",
+  "description": "Automatically replies to WhatsApp group messages using NotificationListenerService.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
