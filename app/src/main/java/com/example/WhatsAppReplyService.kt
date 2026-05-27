@@ -64,7 +64,8 @@ class WhatsAppReplyService : NotificationListenerService() {
                 val remoteInput = replyAction.remoteInputs?.firstOrNull()
                 if (remoteInput != null) {
                     // 5. Eksekusi Balasan
-                    val isMentioned = """@(?!(all\b|everyone\b))""".toRegex(RegexOption.IGNORE_CASE).containsMatchIn(text)
+                    val textWithoutBroadcastMentions = text.replace(Regex("@(all|everyone|semua)\\b", RegexOption.IGNORE_CASE), "")
+                    val isMentioned = textWithoutBroadcastMentions.contains("@")
                     val generatedReply = RuleRepository.findReply(text, isGroup, isMentioned)
                     if (generatedReply == null) {
                         Log.d("WAReplyService", "No matching rule for message: $text")
