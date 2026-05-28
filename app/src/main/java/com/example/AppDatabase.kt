@@ -6,10 +6,11 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [ReplyRule::class], version = 1, exportSchema = false)
+@Database(entities = [ReplyRule::class, ReplyLog::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun ruleDao(): RuleDao
+    abstract fun logDao(): LogDao
 
     companion object {
         @Volatile

@@ -6,5 +6,6 @@ class AutoReplyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         RuleRepository.init(this)
+        LogRepository.init(this)
     }
 }
